@@ -72,7 +72,7 @@ class EmailAddress(models.Model):
         """Save this EmailAddress object."""
         if not self.verif_key:
             salt = hashlib.sha1(str(random()).encode('utf-8')).hexdigest()[:5]
-            self.verif_key = hashlib.sha1(salt + self.email).hexdigest()
+            self.verif_key = hashlib.sha1((salt + self.email).encode('utf-8')).hexdigest()
         if verify and not self.pk:
             verify = True
         else:
