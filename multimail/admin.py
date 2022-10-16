@@ -1,6 +1,8 @@
 from django.contrib import admin
-from . import models
+from .models import EmailAddress
+
 
 class EmailAddressAdmin(admin.ModelAdmin):
     pass
-admin.site.register(models.EmailAddress, EmailAddressAdmin)
+
+admin.site.register(EmailAddress, EmailAddressAdmin)

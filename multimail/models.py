@@ -30,12 +30,12 @@ class EmailAddress(models.Model):
     email property is considered to be the primary address, for which there
     should also be an EmailAddress object associated with the user.
     """
-    user = models.ForeignKey(USER_MODEL_STRING)
+    user = models.ForeignKey(USER_MODEL_STRING, related_name='email_addresses')
     email = models.EmailField(max_length=100, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     verif_key = models.CharField(max_length=40)
     verified_at = models.DateTimeField(default=None, null=True, blank=True)
-    remote_addr = models.IPAddressField(null=True, blank=True)
+    remote_addr = models.GenericIPAddressField(null=True, blank=True)
     remote_host = models.CharField(max_length=255, null=True, blank=True)
     is_primary = models.BooleanField(default=False)
 
