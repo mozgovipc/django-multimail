@@ -1,6 +1,7 @@
 from django.contrib.auth.backends import ModelBackend
 from multimail.models import EmailAddress
 
+
 class MultiEmailAuthenticationBackend(ModelBackend):
     """Allows to login via email address and password. username is interpreted as email address."""
 

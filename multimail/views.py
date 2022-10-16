@@ -3,7 +3,7 @@ from django.core.urlresolvers import reverse
 from django.dispatch import Signal
 from django.shortcuts import redirect, get_object_or_404
 from django.views.generic.base import View
-from models import EmailAddress
+from .models import EmailAddress
 from multimail.settings import MM
 from multimail.util import build_context_dict, get_site
 
