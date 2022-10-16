@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('verif_key', models.CharField(max_length=40)),
                 ('verified_at', models.DateTimeField(null=True, default=None, blank=True)),
-                ('remote_addr', models.IPAddressField(null=True, blank=True)),
+                ('remote_addr', models.GenericIPAddressField(null=True, blank=True)),
                 ('remote_host', models.CharField(null=True, blank=True, max_length=255)),
                 ('is_primary', models.BooleanField(default=False)),
                 ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
