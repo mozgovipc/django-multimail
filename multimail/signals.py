@@ -60,7 +60,7 @@ def user_deactivation_handler(sender, **kwargs):
     created = kwargs['created']
     user = kwargs['instance']
     if not created and not user.is_active:
-        for email in user.emailaddress_set.all():
+        for email in user.email_addresses.all():
             if not email.is_verified():
                 email.delete()
 

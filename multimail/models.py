@@ -40,7 +40,7 @@ class EmailAddress(models.Model):
     def _set_primary_flags(self):
         """Set this email's is_primary to True and all others for this
         user to False."""
-        for email in self.user.emailaddress_set.all():
+        for email in self.user.email_addresses.all():
             if email == self:
                 if not email.is_primary:
                     email.is_primary = True
@@ -74,7 +74,7 @@ class EmailAddress(models.Model):
         """Delete this EmailAddress object."""
         user = self.user
         super(EmailAddress, self).delete()
-        addrs = user.emailaddress_set.all()
+        addrs = user.email_addresses.all()
         if addrs:
             addrs[0].set_primary()
         else:
