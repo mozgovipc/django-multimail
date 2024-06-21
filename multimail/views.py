@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.dispatch import Signal
 from django.shortcuts import redirect, get_object_or_404
 from django.views.generic.base import View
@@ -92,7 +92,7 @@ def delete_email(request, email_pk):
         if not email.is_verified():
             email.delete()
         else:
-            num_verified_emails = len(request.user.emailaddress_set.filter(
+            num_verified_emails = len(request.user.email_addresses.filter(
                 verified_at__isnull=False))
             if num_verified_emails > 1:
                 email.delete()

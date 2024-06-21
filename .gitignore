@@ -5,3 +5,7 @@ build/
 db.sqlite3
 demo/core/settings/prd.py
 demo/core/settings/stg.py
+.idea
+.vagrant
+*.DS_Store
+*.~lock.*

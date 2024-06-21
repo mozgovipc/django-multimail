@@ -2,26 +2,15 @@ import hashlib
 from random import random
 from django.conf import settings
 from django.contrib import messages
-from django.core.mail import EmailMultiAlternatives, mail_admins
+from django.core.mail import EmailMultiAlternatives
 from django.db import models
-from django.db.models.signals import post_save
 from django.template import Context
 from django.template import RequestContext
 from django.template.loader import get_template
 from multimail.settings import MM
 from multimail.util import build_context_dict
 
-try:
-    USER_MODEL_STRING = settings.AUTH_USER_MODEL
-except AttributeError: # handle Django 1.4
-    USER_MODEL_STRING = 'auth.User'
-
-try:
-    from django.utils import timezone
-    now = lambda: timezone.now()
-except ImportError:
-    import datetime
-    now = lambda: datetime.datetime.now()
+USER_MODEL_STRING = settings.AUTH_USER_MODEL
 
 
 class EmailAddress(models.Model):
@@ -30,7 +19,7 @@ class EmailAddress(models.Model):
     email property is considered to be the primary address, for which there
     should also be an EmailAddress object associated with the user.
     """
-    user = models.ForeignKey(USER_MODEL_STRING, related_name='email_addresses')
+    user = models.ForeignKey(USER_MODEL_STRING, related_name='email_addresses', on_delete=models.CASCADE)
     email = models.EmailField(max_length=100, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     verif_key = models.CharField(max_length=40)
@@ -51,7 +40,7 @@ class EmailAddress(models.Model):
     def _set_primary_flags(self):
         """Set this email's is_primary to True and all others for this
         user to False."""
-        for email in self.user.emailaddress_set.all():
+        for email in self.user.email_addresses.all():
             if email == self:
                 if not email.is_primary:
                     email.is_primary = True
@@ -71,8 +60,8 @@ class EmailAddress(models.Model):
     def save(self, verify=True, request=None, *args, **kwargs):
         """Save this EmailAddress object."""
         if not self.verif_key:
-            salt = hashlib.sha1(str(random())).hexdigest()[:5]
-            self.verif_key = hashlib.sha1(salt + self.email).hexdigest()
+            salt = hashlib.sha1(str(random()).encode('utf-8')).hexdigest()[:5]
+            self.verif_key = hashlib.sha1((salt + self.email).encode('utf-8')).hexdigest()
         if verify and not self.pk:
             verify = True
         else:
@@ -85,7 +74,7 @@ class EmailAddress(models.Model):
         """Delete this EmailAddress object."""
         user = self.user
         super(EmailAddress, self).delete()
-        addrs = user.emailaddress_set.all()
+        addrs = user.email_addresses.all()
         if addrs:
             addrs[0].set_primary()
         else:
@@ -137,92 +126,6 @@ class EmailAddress(models.Model):
         """Raised when a verfication request is made for an e-mail address
         that is already verified."""
         pass
-		
+
     class Meta:
         app_label = 'multimail'
-
-### HANDLERS ###
-
-def email_address_handler(sender, **kwargs):
-    """Ensures that there is a multimail version of the email address on the
-    django user object and that email is set to primary."""
-    user = kwargs['instance']
-    if not user.email:
-        return
-    if kwargs.get('raw', False): # don't create email entry when
-                                 # loading fixtures etc.
-        return
-    try:
-        if MM.SEND_EMAIL_ON_USER_SAVE_SIGNAL:
-            if user.email:
-                addr = EmailAddress.objects.filter(user=user,
-                    email__iexact=user.email)
-                if addr:
-                    addr = addr[0]
-                else:
-                    addr = EmailAddress(user=user, email=user.email) 
-                    addr.save()
-        else:
-            try:
-                addr = EmailAddress.objects.get(user=user,email=user.email)
-                # Provides that an address that has been just verified
-                # without use of django-multimail, is still considered
-                # verified in conditions of django-multimail
-                if MM.AUTOVERIFY_ACTIVE_ACCOUNTS and \
-                   user.is_active and not addr.verified_at:
-                    addr.verified_at = now()
-            except EmailAddress.DoesNotExist:
-                addr = EmailAddress()
-                addr.user = user
-                addr.email = user.email
-            addr.save(verify=False)
-        addr._set_primary_flags() # do this for every save in case things
-                                  # get out of sync
-    except Exception:
-        msg = """An attempt to create EmailAddress object for user %s, email
-%s has failed. This may indicate that an EmailAddress object for that email
-already exists in the database. This situation can occur if, for example, a
-user is manually created through the admin panel or the shell with an email
-address that is the same as an existing EmailAddress objects.""" % (
-user.username, user.email)
-        subj = "Failed attempt to create Multimail email address."
-        if MM.EMAIL_ADMINS:
-            mail_admins(subj, msg)
-
-
-def user_deactivation_handler(sender, **kwargs):
-    """Ensures that an administratively deactivated user does not have any
-    lingering unverified email addresses."""
-    created = kwargs['created']
-    user = kwargs['instance']
-    if not created and not user.is_active:
-        for email in user.emailaddress_set.all():
-            if not email.is_verified():
-                email.delete()
-
-
-def setup_signals(user_model):
-    post_save.connect(email_address_handler, sender=user_model)
-    if MM.USER_DEACTIVATION_HANDLER_ON:
-        post_save.connect(user_deactivation_handler, sender=user_model)
-
-try:
-    from django.apps import AppConfig
-except ImportError: # Handle Django < 1.7
-    AppConfig = object
-    try:
-        from django.contrib.auth import get_user_model
-        setup_signals(get_user_model())
-    except ImportError: # Handle Django 1.4
-        from django.contrib.auth.models import User
-        setup_signals(User)
-
-
-class MultimailConfig(AppConfig):
-    """For Django 1.7, set the ready callback for handling User object
-    signal configuration."""
-    name = 'multimail'
-
-    def ready(self):
-        from django.contrib.auth import get_user_model
-        setup_signals(get_user_model())
